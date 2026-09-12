@@ -58,6 +58,14 @@ namespace SchoolSchedule.Services
                     var classes = await _context.Classes.ToDictionaryAsync(c => c.ClassCode!, c => c);
                     var teachers = new Dictionary<string, Teacher>();
 
+                    // تتبع الحصص المضافة (من قاعدة البيانات ومن هذا الاستيراد) لمنع التعارض مع الفهرس الفريد
+                    var existingSlots = new HashSet<(int ClassId, int DayId, int PeriodId)>(
+                        (await _context.Schedules
+                            .Where(s => s.AcademicYear == academicYear && s.Semester == semester)
+                            .Select(s => new { s.ClassId, s.DayId, s.PeriodId })
+                            .ToListAsync())
+                            .Select(s => (s.ClassId, s.DayId, s.PeriodId)));
+
                     // خطوة 1: بناء خريطة الأعمدة (أي عمود يمثل أي يوم وحصة)
                     var columnMap = new Dictionary<int, (int DayId, int PeriodId)>();
                     
@@ -179,16 +187,10 @@ namespace SchoolSchedule.Services
 
                                     if (classes.TryGetValue(finalClassCode, out Class? classEntity))
                                     {
-                                        // التحقق من عدم وجود تعارض
-                                        var existingSchedule = await _context.Schedules
-                                            .FirstOrDefaultAsync(s =>
-                                                s.ClassId == classEntity.ClassId &&
-                                                s.DayId == dayId &&
-                                                s.PeriodId == periodId &&
-                                                s.AcademicYear == academicYear &&
-                                                s.Semester == semester);
+                                        // التحقق من عدم وجود تعارض (في القاعدة أو في هذا الاستيراد نفسه)
+                                        var slot = (classEntity.ClassId, dayId, periodId);
 
-                                        if (existingSchedule == null)
+                                        if (existingSlots.Add(slot))
                                         {
                                             var schedule = new Schedule
                                             {
@@ -203,6 +205,11 @@ namespace SchoolSchedule.Services
 
                                             _context.Schedules.Add(schedule);
                                             result.SchedulesAdded++;
+                                        }
+                                        else
+                                        {
+                                            result.Warnings.Add(
+                                                $"تعارض في الجدول: الصف {finalClassCode} محجوز مسبقاً في نفس اليوم والحصة (الصف {currentRow}, المعلم: {teacherName})");
                                         }
                                     }
                                 }
@@ -224,7 +231,14 @@ namespace SchoolSchedule.Services
             catch (Exception ex)
             {
                 result.Success = false;
-                result.Errors.Add($"خطأ في الاستيراد: {ex.Message}");
+                var detail = ex.Message;
+                var inner = ex.InnerException;
+                while (inner != null)
+                {
+                    detail += " -> " + inner.Message;
+                    inner = inner.InnerException;
+                }
+                result.Errors.Add($"خطأ في الاستيراد: {detail}");
             }
 
             return result;
