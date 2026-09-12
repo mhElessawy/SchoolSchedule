@@ -64,7 +64,13 @@ namespace SchoolSchedule.Controllers
 
                         if (result.Success)
                         {
-                            TempData["Success"] = $"تم استيراد البيانات بنجاح! المعلمين: {result.TeachersAdded}، الحصص: {result.SchedulesAdded}";
+                            var settings = await _context.SchoolSettings.FirstAsync();
+                            settings.CurrentAcademicYear = model.AcademicYear;
+                            settings.CurrentSemester = model.Semester;
+                            settings.UpdatedDate = DateTime.Now;
+                            await _context.SaveChangesAsync();
+
+                            TempData["Success"] = $"تم استيراد البيانات بنجاح! المعلمين الجدد: {result.TeachersAdded}، الحصص المضافة أو المحدثة: {result.SchedulesAdded}";
                             
                             if (result.Warnings.Any())
                             {
