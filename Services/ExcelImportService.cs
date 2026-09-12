@@ -65,7 +65,7 @@ namespace SchoolSchedule.Services
                     int col = 5; // البداية من العمود 5 (E)
                     foreach (var day in days)
                     {
-                        for (int periodNum = 1; periodNum <= 5; periodNum++)
+                        for (int periodNum = 1; periodNum <= periods.Count; periodNum++)
                         {
                             // البحث عن العمود الذي يحتوي على رقم الحصة
                             while (col <= worksheet.Dimension.End.Column)
