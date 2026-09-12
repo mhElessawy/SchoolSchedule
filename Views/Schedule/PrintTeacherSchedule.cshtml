@@ -1,0 +1,300 @@
+@model SchoolSchedule.Models.ViewModels.TeacherScheduleViewModel
+
+@{
+    ViewData["Title"] = $"جدول {Model.TeacherName}";
+    Layout = null; // بدون Layout للطباعة
+}
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            direction: rtl;
+            text-align: right;
+        }
+
+        .print-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #198754;
+            padding-bottom: 20px;
+        }
+
+        .print-header h1 {
+            color: #198754;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .print-header h2 {
+            color: #6c757d;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .print-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .teacher-info {
+            background-color: #d1e7dd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .teacher-info h3 {
+            color: #198754;
+            margin-bottom: 10px;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        .schedule-table th,
+        .schedule-table td {
+            border: 2px solid #dee2e6;
+            padding: 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .schedule-table thead th {
+            background-color: #198754;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .schedule-table tbody th {
+            background-color: #d1e7dd;
+            font-weight: bold;
+            color: #198754;
+            width: 100px;
+        }
+
+        .schedule-table .period-header {
+            background-color: #495057;
+            color: white;
+            font-size: 12px;
+            font-weight: normal;
+        }
+
+        .schedule-cell {
+            background-color: white;
+            min-height: 80px;
+            position: relative;
+        }
+
+        .schedule-cell.has-class {
+            background-color: #fff3cd;
+        }
+
+        .class-name {
+            font-weight: bold;
+            color: #198754;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .subject-name {
+            color: #495057;
+            font-size: 12px;
+        }
+
+        .print-footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 12px;
+            border-top: 2px solid #dee2e6;
+            padding-top: 20px;
+        }
+
+        .stats-box {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background-color: #e7f5ff;
+            border-radius: 5px;
+            min-width: 150px;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #198754;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        @@media print {
+            body {
+                margin: 0;
+                padding: 20px;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .schedule-table {
+                page-break-inside: avoid;
+            }
+
+            .schedule-table th,
+            .schedule-table td {
+                border: 1px solid #000 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- زر الطباعة -->
+        <div class="no-print text-center mb-3">
+            <button onclick="window.print()" class="btn btn-success btn-lg">
+                <i class="fas fa-print"></i> طباعة الجدول
+            </button>
+            <button onclick="window.close()" class="btn btn-secondary btn-lg">
+                <i class="fas fa-times"></i> إغلاق
+            </button>
+        </div>
+
+        <!-- ترويسة الطباعة -->
+        <div class="print-header">
+            <h1>@ViewBag.SchoolName</h1>
+            <h2>جدول حصص المعلم</h2>
+        </div>
+
+        <!-- معلومات المعلم -->
+        <div class="teacher-info">
+            <h3><i class="fas fa-user-tie"></i> @Model.TeacherName</h3>
+            <p><strong>المادة:</strong> @Model.SubjectName</p>
+            @if (Model.IsHeadOfDepartment)
+            {
+                <span class="badge bg-warning text-dark">رئيس قسم</span>
+            }
+            @if (Model.IsSupervisor)
+            {
+                <span class="badge bg-primary">مشرف</span>
+            }
+        </div>
+
+        <!-- معلومات الجدول -->
+        <div class="print-info">
+            <div>
+                <strong>العام الدراسي:</strong> @Model.AcademicYear
+            </div>
+            <div>
+                <strong>الفصل الدراسي:</strong> @(Model.Semester == 1 ? "الأول" : "الثاني")
+            </div>
+            <div>
+                <strong>تاريخ الطباعة:</strong> @DateTime.Now.ToString("dd/MM/yyyy")
+            </div>
+        </div>
+
+        <!-- إحصائيات -->
+        <div class="stats-box">
+            <div class="stat-item">
+                <div class="stat-number">@Model.TotalPeriods</div>
+                <div class="stat-label">إجمالي الحصص</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">@Model.NumberOfClasses</div>
+                <div class="stat-label">عدد الصفوف</div>
+            </div>
+        </div>
+
+        <!-- جدول الحصص -->
+        <table class="schedule-table">
+            <thead>
+                <tr>
+                    <th rowspan="2">الحصة / اليوم</th>
+                    @foreach (var day in Model.DayNames)
+                    {
+                        <th>@day</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @for (int periodIndex = 0; periodIndex < Model.PeriodNumbers.Count; periodIndex++)
+                {
+                    <tr>
+                        <th>
+                            <div>الحصة @Model.PeriodNumbers[periodIndex]</div>
+                            <div class="period-header">@Model.PeriodTimes[periodIndex]</div>
+                        </th>
+                        @for (int dayIndex = 0; dayIndex < Model.DayNames.Count; dayIndex++)
+                        {
+                            var schedule = Model.ScheduleGridList[dayIndex][periodIndex];
+                            if (schedule != null)
+                            {
+                                <td class="schedule-cell has-class">
+                                    <div class="class-name">@schedule.ClassName</div>
+                                    <div class="subject-name">@schedule.SubjectName</div>
+                                </td>
+                            }
+                            else
+                            {
+                                <td class="schedule-cell">
+                                    <span style="color: #ccc;">فراغ</span>
+                                </td>
+                            }
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <!-- قائمة الصفوف -->
+        @if (Model.Classes.Any())
+        {
+            <div style="page-break-before: avoid;">
+                <h4 class="text-center mb-3" style="color: #198754;">الصفوف التي يدرسها المعلم</h4>
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
+                    @foreach (var className in Model.Classes)
+                    {
+                        <span class="badge bg-success" style="font-size: 14px; padding: 8px 15px;">@className</span>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- تذييل الطباعة -->
+        <div class="print-footer">
+            <p>جدول حصص المعلم - @ViewBag.SchoolName</p>
+            <p>العام الدراسي @Model.AcademicYear - الفصل @(Model.Semester == 1 ? "الأول" : "الثاني")</p>
+        </div>
+    </div>
+
+    <script>
+        // طباعة تلقائية عند فتح الصفحة (اختياري)
+        // window.onload = function() { window.print(); }
+    </script>
+</body>
+</html>

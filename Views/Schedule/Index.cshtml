@@ -1,0 +1,124 @@
+@{
+    ViewData["Title"] = "الصفحة الرئيسية";
+}
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card border-0 bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body text-center py-5">
+                <h1 class="display-4 mb-3">
+                    <i class="fas fa-school"></i> @ViewBag.SchoolName
+                </h1>
+                <p class="lead">
+                    نظام إدارة الجدول المدرسي
+                </p>
+                <p class="mb-0">
+                    السنة الدراسية: @ViewBag.AcademicYear | الفصل الدراسي: @ViewBag.Semester
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card border-primary h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chalkboard fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">جداول الصفوف</h5>
+                <p class="card-text">عرض وإدارة جداول جميع الصفوف الدراسية</p>
+                <a href="@Url.Action("ClassList")" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> عرض الصفوف
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card border-success h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chalkboard-teacher fa-3x text-success mb-3"></i>
+                <h5 class="card-title">جداول المعلمين</h5>
+                <p class="card-text">عرض جداول المعلمين وتوزيع الحصص</p>
+                <a href="@Url.Action("TeacherList")" class="btn btn-success">
+                    <i class="fas fa-arrow-left"></i> عرض المعلمين
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card border-info h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-bar fa-3x text-info mb-3"></i>
+                <h5 class="card-title">الإحصائيات</h5>
+                <p class="card-text">إحصائيات المعلمين وعدد الحصص</p>
+                <a href="@Url.Action("TeacherWorkloads")" class="btn btn-info">
+                    <i class="fas fa-arrow-left"></i> عرض الإحصائيات
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card border-warning h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-file-excel text-warning"></i> استيراد من Excel
+                </h5>
+                <p class="card-text">استيراد بيانات الجدول من ملف Excel</p>
+                <a href="@Url.Action("Import", "Import")" class="btn btn-warning">
+                    <i class="fas fa-file-import"></i> استيراد البيانات
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-3">
+        <div class="card border-secondary h-100">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-search text-secondary"></i> البحث في الجدول
+                </h5>
+                <p class="card-text">البحث عن حصص معينة حسب المعايير</p>
+                <a href="@Url.Action("Search")" class="btn btn-secondary">
+                    <i class="fas fa-search"></i> بحث متقدم
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-light">
+                <i class="fas fa-info-circle"></i> إرشادات الاستخدام
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary"><i class="fas fa-check-circle"></i> البدء السريع</h6>
+                        <ul>
+                            <li>اختر "جداول الصفوف" لعرض جدول صف معين</li>
+                            <li>يمكنك إضافة حصص جديدة بالضغط على الخلايا الفارغة</li>
+                            <li>استخدم "استيراد من Excel" لاستيراد بيانات من ملف Excel</li>
+                            <li>راجع "الإحصائيات" لمعرفة توزيع الحصص على المعلمين</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success"><i class="fas fa-lightbulb"></i> ملاحظات مهمة</h6>
+                        <ul>
+                            <li>النظام يمنع التعارض التلقائي في الحصص</li>
+                            <li>يمكن طباعة الجداول باستخدام زر الطباعة</li>
+                            <li>استخدم "نسخ الجدول" لنسخ جدول من صف لآخر</li>
+                            <li>يمكن تصدير الجداول إلى Excel للمعالجة الخارجية</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

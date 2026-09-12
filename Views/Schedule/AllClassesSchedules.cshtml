@@ -1,0 +1,283 @@
+@model List<SchoolSchedule.Models.ViewModels.ClassScheduleViewModel>
+
+@{
+    ViewData["Title"] = "جميع جداول الصفوف";
+    Layout = null; // بدون Layout للطباعة
+}
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            direction: rtl;
+            text-align: right;
+            padding: 20px;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #0d6efd;
+            padding-bottom: 20px;
+        }
+
+        .header-section h1 {
+            color: #0d6efd;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header-section h2 {
+            color: #6c757d;
+            font-size: 20px;
+        }
+
+        .schedule-page {
+            page-break-after: always;
+            margin-bottom: 40px;
+            border: 2px solid #dee2e6;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .schedule-page:last-child {
+            page-break-after: auto;
+        }
+
+        .class-header {
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .class-header h3 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        .schedule-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .schedule-table th,
+        .schedule-table td {
+            border: 2px solid #dee2e6;
+            padding: 12px 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .schedule-table thead th {
+            background-color: #0d6efd;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .schedule-table tbody th {
+            background-color: #e7f1ff;
+            font-weight: bold;
+            color: #0d6efd;
+            width: 100px;
+        }
+
+        .schedule-table .period-header {
+            background-color: #495057;
+            color: white;
+            font-size: 11px;
+        }
+
+        .schedule-cell {
+            background-color: white;
+            min-height: 60px;
+        }
+
+        .schedule-cell.has-class {
+            background-color: #d1ecf1;
+        }
+
+        .subject-name {
+            font-weight: bold;
+            color: #0d6efd;
+            margin-bottom: 3px;
+            font-size: 13px;
+        }
+
+        .teacher-name {
+            color: #495057;
+            font-size: 11px;
+        }
+
+        .no-print {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        @@media print {
+            body {
+                padding: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .schedule-page {
+                margin: 0;
+                border: none;
+                padding: 20px;
+                page-break-after: always;
+            }
+
+            .schedule-page:last-child {
+                page-break-after: auto;
+            }
+
+            .schedule-table th,
+            .schedule-table td {
+                border: 1px solid #000 !important;
+                padding: 8px 4px;
+            }
+
+            @@page {
+                margin: 1cm;
+            }
+        }
+
+        @@media screen and (max-width: 768px) {
+            .schedule-table {
+                font-size: 10px;
+            }
+            
+            .schedule-table th,
+            .schedule-table td {
+                padding: 6px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- أزرار التحكم -->
+    <div class="no-print">
+        <button onclick="window.print()" class="btn btn-success btn-lg me-2">
+            <i class="fas fa-print"></i> طباعة الكل
+        </button>
+        <a href="@Url.Action("ClassList")" class="btn btn-secondary btn-lg">
+            <i class="fas fa-arrow-right"></i> عودة
+        </a>
+    </div>
+
+    <!-- الترويسة العامة -->
+    <div class="header-section no-print">
+        <h1>@ViewBag.SchoolName</h1>
+        <h2>جميع جداول الصفوف الدراسية</h2>
+        <p>
+            <strong>العام الدراسي:</strong> @ViewBag.AcademicYear |
+            <strong>الفصل الدراسي:</strong> @(ViewBag.Semester == 1 ? "الأول" : "الثاني")
+        </p>
+    </div>
+
+    <!-- جداول الصفوف -->
+    @foreach (var schedule in Model)
+    {
+        <div class="schedule-page">
+            <!-- رأس الصف -->
+            <div class="class-header">
+                <h3>@schedule.ClassName</h3>
+            </div>
+
+            <!-- معلومات الجدول -->
+            <div class="schedule-info">
+                <div>
+                    <strong>الصف:</strong> @schedule.ClassName
+                </div>
+                <div>
+                    <strong>العام الدراسي:</strong> @schedule.AcademicYear
+                </div>
+                <div>
+                    <strong>الفصل:</strong> @(schedule.Semester == 1 ? "الأول" : "الثاني")
+                </div>
+            </div>
+
+            <!-- جدول الحصص -->
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2">الحصة / اليوم</th>
+                        @foreach (var day in schedule.DayNames)
+                        {
+                            <th>@day</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int periodIndex = 0; periodIndex < schedule.PeriodNumbers.Count; periodIndex++)
+                    {
+                        <tr>
+                            <th>
+                                <div>الحصة @schedule.PeriodNumbers[periodIndex]</div>
+                                <div class="period-header">@schedule.PeriodTimes[periodIndex]</div>
+                            </th>
+                            @for (int dayIndex = 0; dayIndex < schedule.DayNames.Count; dayIndex++)
+                            {
+                                var scheduleCell = schedule.ScheduleGridList[dayIndex][periodIndex];
+                                if (scheduleCell != null && !scheduleCell.IsEmpty)
+                                {
+                                    <td class="schedule-cell has-class">
+                                        <div class="subject-name">@scheduleCell.SubjectName</div>
+                                      @*   <div class="teacher-name">@scheduleCell.TeacherName</div> *@
+                                    </td>
+                                }
+                                else
+                                {
+                                    <td class="schedule-cell">
+                                        <span style="color: #ccc;">-</span>
+                                    </td>
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <!-- تذييل الصفحة -->
+            <div style="text-align: center; color: #6c757d; font-size: 11px; margin-top: 10px;">
+                تاريخ الطباعة: @DateTime.Now.ToString("dd/MM/yyyy")
+            </div>
+        </div>
+    }
+
+    <script>
+        // يمكن إضافة طباعة تلقائية عند التحميل
+        // window.onload = function() { window.print(); }
+    </script>
+</body>
+</html>

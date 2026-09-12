@@ -1,0 +1,105 @@
+@model IEnumerable<SchoolSchedule.Models.Teacher>
+
+@{
+    ViewData["Title"] = "قائمة المعلمين";
+}
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-chalkboard-teacher"></i> قائمة المعلمين
+    </div>
+    <div class="card-body">
+        @{
+            var teachersBySubject = Model.GroupBy(t => t.Subject.SubjectName);
+        }
+
+        @foreach (var subjectGroup in teachersBySubject)
+        {
+            <div class="mb-4">
+                <h5 class="text-primary border-bottom pb-2">
+                    <i class="fas fa-book"></i> @subjectGroup.Key
+                </h5>
+                <div class="row">
+                    @foreach (var teacher in subjectGroup)
+                    {
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-info h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-user-tie"></i> @teacher.TeacherName
+                                    </h6>
+                                    @if (teacher.IsHeadOfDepartment)
+                                    {
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-star"></i> رئيس قسم
+                                        </span>
+                                    }
+                                    @if (teacher.IsSupervisor)
+                                    {
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-shield-alt"></i> مشرف جناح
+                                        </span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(teacher.Notes))
+                                    {
+                                        <p class="card-text small text-muted mt-2">
+                                            <i class="fas fa-sticky-note"></i> @teacher.Notes
+                                        </p>
+                                    }
+                                    <div class="mt-3">
+                                        <a href="@Url.Action("TeacherSchedule", new { id = teacher.TeacherId })" 
+                                           class="btn btn-primary btn-sm w-100">
+                                            <i class="fas fa-calendar"></i> عرض الجدول
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <i class="fas fa-chart-pie"></i> الإحصائيات
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h2>@Model.Count()</h2>
+                        <p class="mb-0">إجمالي المعلمين</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h2>@Model.GroupBy(t => t.SubjectId).Count()</h2>
+                        <p class="mb-0">عدد المواد</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body">
+                        <h2>@Model.Count(t => t.IsHeadOfDepartment)</h2>
+                        <p class="mb-0">رؤساء الأقسام</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h2>@Model.Count(t => t.IsSupervisor)</h2>
+                        <p class="mb-0">المشرفين</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

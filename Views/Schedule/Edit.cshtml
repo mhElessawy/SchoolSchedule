@@ -1,0 +1,117 @@
+@model SchoolSchedule.Models.ViewModels.ScheduleFormViewModel
+
+@{
+    ViewData["Title"] = "تعديل الحصة";
+}
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-edit"></i> تعديل الحصة
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info mb-3">
+            <strong>الحصة الحالية:</strong>
+            @Model.ClassName - @Model.SubjectName - @Model.TeacherName - @Model.DayName - الحصة @Model.PeriodNumber
+        </div>
+
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="ScheduleId" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="ClassId" class="form-label"></label>
+                        <select asp-for="ClassId" class="form-select" asp-items="ViewBag.Classes">
+                            <option value="">-- اختر الصف --</option>
+                        </select>
+                        <span asp-validation-for="ClassId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="SubjectId" class="form-label"></label>
+                        <select asp-for="SubjectId" class="form-select" asp-items="ViewBag.Subjects" id="subjectSelect">
+                            <option value="">-- اختر المادة --</option>
+                        </select>
+                        <span asp-validation-for="SubjectId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="TeacherId" class="form-label"></label>
+                        <select asp-for="TeacherId" class="form-select" asp-items="ViewBag.Teachers" id="teacherSelect">
+                            <option value="">-- اختر المعلم --</option>
+                        </select>
+                        <span asp-validation-for="TeacherId" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="DayId" class="form-label"></label>
+                        <select asp-for="DayId" class="form-select" asp-items="ViewBag.Days">
+                            <option value="">-- اختر اليوم --</option>
+                        </select>
+                        <span asp-validation-for="DayId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="PeriodId" class="form-label"></label>
+                        <select asp-for="PeriodId" class="form-select" asp-items="ViewBag.Periods">
+                            <option value="">-- اختر الحصة --</option>
+                        </select>
+                        <span asp-validation-for="PeriodId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label"></label>
+                        <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Notes" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <input type="hidden" asp-for="AcademicYear" />
+            <input type="hidden" asp-for="Semester" />
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> حفظ التعديلات
+                </button>
+                <a asp-action="ClassSchedule" asp-route-id="@Model.ClassId" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> إلغاء
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js"></script>
+    
+    <script>
+        $(document).ready(function () {
+            // عند تغيير المادة، تحديث قائمة المعلمين
+            $('#subjectSelect').change(function () {
+                var subjectId = $(this).val();
+                if (subjectId) {
+                    $.ajax({
+                        url: '@Url.Action("GetTeachersBySubject", "Schedule")',
+                        type: 'GET',
+                        data: { subjectId: subjectId },
+                        success: function (data) {
+                            var teacherSelect = $('#teacherSelect');
+                            var currentTeacher = '@Model.TeacherId';
+                            teacherSelect.empty();
+                            teacherSelect.append('<option value="">-- اختر المعلم --</option>');
+                            $.each(data, function (i, teacher) {
+                                var selected = teacher.value == currentTeacher ? 'selected' : '';
+                                teacherSelect.append('<option value="' + teacher.value + '" ' + selected + '>' + teacher.text + '</option>');
+                            });
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+}

@@ -1,0 +1,126 @@
+@model SchoolSchedule.Models.ViewModels.ClassScheduleViewModel
+
+@{
+    ViewData["Title"] = $"جدول الصف {Model.ClassName}";
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-calendar-week"></i>
+            <strong>جدول الصف: @Model.ClassName</strong>
+            <span class="badge bg-light text-dark me-2">@Model.AcademicYear - الفصل @Model.Semester</span>
+        </div>
+        <div class="no-print">
+            <a href="@Url.Action("PrintClassSchedule", new { id = Model.ClassId })" class="btn btn-light btn-sm" target="_blank">
+                <i class="fas fa-print"></i> طباعة
+            </a>
+            <a href="@Url.Action("Create", new { classId = Model.ClassId })" class="btn btn-success btn-sm">
+                <i class="fas fa-plus"></i> إضافة حصة
+            </a>
+            <a href="@Url.Action("ClassList")" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-right"></i> رجوع
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">الحصة</th>
+                        @foreach (var day in Model.Days)
+                        {
+                            <th>@day.DayName</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var period in Model.Periods)
+                    {
+                        <tr>
+                            <td class="period-header">
+                                <strong>@period.PeriodNumber</strong>
+                                @if (period.StartTime.HasValue)
+                                {
+                                    <br />
+                                    <small>@period.StartTime.Value.ToString(@"hh\:mm")</small>
+                                }
+                            </td>
+                            @foreach (var day in Model.Days)
+                            {
+                                @if (Model.ScheduleGrid.ContainsKey(day.DayId) && Model.ScheduleGrid[day.DayId].ContainsKey(period.PeriodId))
+                                {
+                                    var cell = Model.ScheduleGrid[day.DayId][period.PeriodId];
+                                    @if (cell.IsEmpty)
+                                    {
+                                        <td>
+                                            <div class="schedule-cell empty-cell no-print" 
+                                                 onclick="location.href='@Url.Action("Create", new { classId = Model.ClassId, dayId = day.DayId, periodId = period.PeriodId })'">
+                                                <i class="fas fa-plus text-muted"></i>
+                                            </div>
+                                        </td>
+                                    }
+                                    else
+                                    {
+                                        <td>
+                                            <div class="schedule-cell has-class">
+                                                <span class="subject-name">@cell.SubjectName</span>
+                                              @*  <span class="teacher-name">@cell.TeacherName</span> *@
+                                                @if (!string.IsNullOrEmpty(cell.Notes))
+                                                {
+                                                    <small class="text-muted d-block">@cell.Notes</small>
+                                                }
+                                                <div class="mt-2 no-print">
+                                                    <a href="@Url.Action("Edit", new { id = cell.ScheduleId })" 
+                                                       class="btn btn-sm btn-primary btn-action">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="@Url.Action("Delete", new { id = cell.ScheduleId })" 
+                                                       class="btn btn-sm btn-danger btn-action">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    }
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3 no-print">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-info-circle"></i> معلومات الصف
+            </div>
+            <div class="card-body">
+                <p><strong>الصف:</strong> @Model.Grade</p>
+                <p><strong>الشعبة:</strong> @Model.Section</p>
+                <p><strong>السنة الدراسية:</strong> @Model.AcademicYear</p>
+                <p><strong>الفصل الدراسي:</strong> @Model.Semester</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-tools"></i> أدوات إضافية
+            </div>
+            <div class="card-body">
+                <a href="@Url.Action("QuickCopy", new { fromClassId = Model.ClassId })" class="btn btn-info btn-sm w-100 mb-2">
+                    <i class="fas fa-copy"></i> نسخ الجدول إلى صف آخر
+                </a>
+                <a href="@Url.Action("Export", "Import")" class="btn btn-success btn-sm w-100">
+                    <i class="fas fa-file-excel"></i> تصدير إلى Excel
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

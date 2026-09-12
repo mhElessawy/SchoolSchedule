@@ -1,0 +1,99 @@
+@model SchoolSchedule.Models.ViewModels.QuickCopyViewModel
+
+@{
+    ViewData["Title"] = "نسخ الجدول";
+}
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-copy"></i> نسخ الجدول من صف إلى آخر
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>معلومة:</strong> يمكنك نسخ جدول صف كامل إلى صف آخر بسرعة. سيتم نسخ جميع الحصص مع المعلمين والمواد.
+        </div>
+
+        <form asp-action="QuickCopy" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="FromClassId" class="form-label"></label>
+                        <select asp-for="FromClassId" class="form-select" asp-items="ViewBag.Classes">
+                            <option value="">-- اختر الصف المصدر --</option>
+                        </select>
+                        <span asp-validation-for="FromClassId" class="text-danger"></span>
+                        <div class="form-text">
+                            <i class="fas fa-arrow-left"></i> الصف الذي تريد نسخ جدوله
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="ToClassId" class="form-label"></label>
+                        <select asp-for="ToClassId" class="form-select" asp-items="ViewBag.Classes">
+                            <option value="">-- اختر الصف الهدف --</option>
+                        </select>
+                        <span asp-validation-for="ToClassId" class="text-danger"></span>
+                        <div class="form-text">
+                            <i class="fas fa-arrow-left"></i> الصف الذي تريد النسخ إليه
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="AcademicYear" class="form-label"></label>
+                        <input asp-for="AcademicYear" class="form-control" readonly />
+                        <span asp-validation-for="AcademicYear" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Semester" class="form-label"></label>
+                        <select asp-for="Semester" class="form-select" disabled>
+                            <option value="1">الفصل الأول</option>
+                            <option value="2">الفصل الثاني</option>
+                        </select>
+                        <span asp-validation-for="Semester" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input asp-for="DeleteExisting" class="form-check-input" type="checkbox" checked />
+                            <label asp-for="DeleteExisting" class="form-check-label"></label>
+                        </div>
+                        <div class="form-text text-danger">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            سيتم حذف جدول الصف الهدف أولاً إذا كان موجوداً
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-warning">
+                <h6><i class="fas fa-exclamation-triangle"></i> تنبيهات مهمة:</h6>
+                <ul class="mb-0">
+                    <li>تأكد من اختيار الصف المصدر والصف الهدف بشكل صحيح</li>
+                    <li>سيتم نسخ جميع الحصص مع نفس المعلمين والمواد</li>
+                    <li>الحصص المتعارضة لن يتم نسخها</li>
+                    <li>إذا اخترت "حذف جدول الصف الهدف"، سيتم حذف جميع حصصه أولاً</li>
+                </ul>
+            </div>
+
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-copy"></i> نسخ الجدول
+                </button>
+                <a asp-action="ClassList" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> إلغاء
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js"></script>
+}

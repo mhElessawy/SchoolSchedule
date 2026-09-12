@@ -1,0 +1,90 @@
+@model IEnumerable<SchoolSchedule.Models.Class>
+
+@{
+    ViewData["Title"] = "قائمة الصفوف";
+}
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-chalkboard"></i> قائمة الصفوف الدراسية
+        </div>
+        <div>
+            <a asp-action="AllClassesSchedules" class="btn btn-success">
+                <i class="fas fa-table"></i> عرض جميع الجداول
+            </a>
+            <a asp-action="ExportAllClassesToPdf" class="btn btn-danger">
+                <i class="fas fa-file-pdf"></i> تصدير PDF
+            </a>
+            <a asp-action="Index" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i> عودة
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            @{
+                var grades = Model.GroupBy(c => c.Grade).OrderBy(g => g.Key);
+            }
+
+            @foreach (var gradeGroup in grades)
+            {
+                <div class="col-md-3 mb-4">
+                    <div class="card border-primary">
+                        <div class="card-header bg-primary text-white text-center">
+                            <h5 class="mb-0">الصف @gradeGroup.Key</h5>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="list-group list-group-flush">
+                                @foreach (var classItem in gradeGroup.OrderBy(c => c.Section))
+                                {
+                                    <a href="@Url.Action("ClassSchedule", new { id = classItem.ClassId })" 
+                                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="fas fa-users"></i> الشعبة @classItem.Section
+                                        </span>
+                                        <i class="fas fa-arrow-left"></i>
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <i class="fas fa-info-circle"></i> الإحصائيات
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-4">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h2>@Model.Count()</h2>
+                        <p class="mb-0">إجمالي الصفوف</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h2>@Model.GroupBy(c => c.Grade).Count()</h2>
+                        <p class="mb-0">المراحل الدراسية</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h2>@Model.Max(c => c.Section)</h2>
+                        <p class="mb-0">عدد الشعب لكل صف</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

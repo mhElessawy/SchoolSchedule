@@ -1,0 +1,52 @@
+@model SchoolSchedule.Models.Schedule
+
+@{
+    ViewData["Title"] = "حذف الحصة";
+}
+
+<div class="card">
+    <div class="card-header bg-danger text-white">
+        <i class="fas fa-trash-alt"></i> تأكيد حذف الحصة
+    </div>
+    <div class="card-body">
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>تحذير:</strong> هل أنت متأكد من حذف هذه الحصة؟ لا يمكن التراجع عن هذا الإجراء.
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-light">
+                <strong>تفاصيل الحصة</strong>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>الصف:</strong> @Model.Class.ClassName</p>
+                        <p><strong>المادة:</strong> @Model.Subject.SubjectName</p>
+                        <p><strong>المعلم:</strong> @Model.Teacher.TeacherName</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>اليوم:</strong> @Model.SchoolDay.DayName</p>
+                        <p><strong>الحصة:</strong> @Model.Period.PeriodNumber</p>
+                        <p><strong>الوقت:</strong> @Model.Period.TimeRange</p>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.Notes))
+                {
+                    <hr />
+                    <p><strong>ملاحظات:</strong> @Model.Notes</p>
+                }
+            </div>
+        </div>
+
+        <form asp-action="Delete" method="post" class="mt-3">
+            <input type="hidden" asp-for="ScheduleId" />
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash"></i> تأكيد الحذف
+            </button>
+            <a asp-action="ClassSchedule" asp-route-id="@Model.ClassId" class="btn btn-secondary">
+                <i class="fas fa-times"></i> إلغاء
+            </a>
+        </form>
+    </div>
+</div>

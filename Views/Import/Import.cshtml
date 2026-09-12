@@ -1,0 +1,131 @@
+@model SchoolSchedule.Models.ViewModels.ImportScheduleViewModel
+
+@{
+    ViewData["Title"] = "استيراد من Excel";
+}
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-file-excel"></i> استيراد الجدول من ملف Excel
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            <strong>ملاحظة:</strong> يجب أن يكون ملف Excel بنفس تنسيق الملف المرفوع. 
+            سيتم استيراد المعلمين والحصص تلقائياً.
+        </div>
+
+        <form asp-action="Import" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="ExcelFile" class="form-label"></label>
+                        <input asp-for="ExcelFile" class="form-control" type="file" accept=".xlsx,.xls" />
+                        <span asp-validation-for="ExcelFile" class="text-danger"></span>
+                        <div class="form-text">
+                            <i class="fas fa-file-excel"></i> اختر ملف Excel (.xlsx أو .xls)
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="AcademicYear" class="form-label"></label>
+                        <input asp-for="AcademicYear" class="form-control" />
+                        <span asp-validation-for="AcademicYear" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Semester" class="form-label"></label>
+                        <select asp-for="Semester" class="form-select">
+                            <option value="1">الفصل الأول</option>
+                            <option value="2">الفصل الثاني</option>
+                        </select>
+                        <span asp-validation-for="Semester" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input asp-for="DeleteExisting" class="form-check-input" type="checkbox" />
+                            <label asp-for="DeleteExisting" class="form-check-label"></label>
+                        </div>
+                        <div class="form-text text-danger">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            تحذير: سيتم حذف جميع الحصص الموجودة للسنة والفصل المحددين
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-header">
+                            <i class="fas fa-list-check"></i> متطلبات الملف
+                        </div>
+                        <div class="card-body">
+                            <ul class="mb-0">
+                                <li>يجب أن تحتوي ورقة العمل على اسم "جدول المدرسي"</li>
+                                <li>الصفوف تُمثل برقمين (مثال: 81 = صف 8 شعبة 1)</li>
+                                <li>يجب أن تكون المواد موجودة في قاعدة البيانات</li>
+                                <li>سيتم إنشاء المعلمين الجدد تلقائياً</li>
+                                <li>سيتم تجاهل الحصص المتعارضة</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="card bg-warning text-dark mt-3">
+                        <div class="card-body">
+                            <h6><i class="fas fa-exclamation-triangle"></i> تنبيه</h6>
+                            <p class="mb-0 small">
+                                تأكد من صحة البيانات قبل الاستيراد. 
+                                يُفضل أخذ نسخة احتياطية من قاعدة البيانات قبل البدء.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-upload"></i> رفع واستيراد البيانات
+                </button>
+                <a asp-action="Index" asp-controller="Schedule" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> إلغاء
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        <i class="fas fa-question-circle"></i> كيفية الاستخدام
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-12">
+                <h6>خطوات الاستيراد:</h6>
+                <ol>
+                    <li>تأكد من أن ملف Excel يحتوي على البيانات بالتنسيق الصحيح</li>
+                    <li>اختر الملف من جهازك</li>
+                    <li>حدد السنة الدراسية والفصل الدراسي</li>
+                    <li>اختر ما إذا كنت تريد حذف البيانات الموجودة أم لا</li>
+                    <li>اضغط على "رفع واستيراد البيانات"</li>
+                    <li>انتظر حتى يكتمل الاستيراد وراجع النتائج</li>
+                </ol>
+
+                <div class="alert alert-success mt-3">
+                    <strong>نصيحة:</strong> يمكنك أولاً تصدير الجدول الحالي لمعرفة التنسيق المطلوب، 
+                    ثم تعديله واستيراده مرة أخرى.
+                    <a href="@Url.Action("Export", "Import")" class="btn btn-sm btn-success ms-2">
+                        <i class="fas fa-download"></i> تصدير الجدول الحالي
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js"></script>
+}
