@@ -62,10 +62,10 @@ namespace SchoolSchedule.Services
                     // حذف البيانات الموجودة إذا طُلب ذلك
                     if (deleteExisting)
                     {
-                        var existingSchedules = await _context.Schedules
+                        var schedulesToDelete = await _context.Schedules
                             .Where(s => s.AcademicYear == academicYear && s.Semester == semester)
                             .ToListAsync();
-                        _context.Schedules.RemoveRange(existingSchedules);
+                        _context.Schedules.RemoveRange(schedulesToDelete);
                         await _context.SaveChangesAsync();
                     }
 
@@ -78,14 +78,13 @@ namespace SchoolSchedule.Services
                     var classes = await _context.Classes.ToDictionaryAsync(c => c.ClassCode!, c => c);
                     var teachers = new Dictionary<string, Teacher>();
 
-                    var existingScheduleKeys = await _context.Schedules
+                    var existingSchedules = await _context.Schedules
                         .Where(s => s.AcademicYear == academicYear && s.Semester == semester)
-                        .Select(s => new { s.ClassId, s.DayId, s.PeriodId })
                         .ToListAsync();
 
-                    var usedScheduleKeys = existingScheduleKeys
-                        .Select(s => (s.ClassId, s.DayId, s.PeriodId))
-                        .ToHashSet();
+                    var existingSchedulesByKey = existingSchedules
+                        .ToDictionary(s => (s.ClassId, s.DayId, s.PeriodId), s => s);
+                    var importedScheduleKeys = new HashSet<(int ClassId, int DayId, int PeriodId)>();
 
                     // خطوة 1: بناء خريطة الأعمدة من عناوين الأيام وأرقام الحصص الموجودة فعلاً.
                     var columnMap = BuildColumnMap(worksheet, header.Value.HeaderRow, header.Value.PeriodRow, days, periodByNumber);
@@ -171,6 +170,7 @@ namespace SchoolSchedule.Services
                                 int colNum = kvp.Key;
                                 int dayId = kvp.Value.DayId;
                                 int periodId = kvp.Value.PeriodId;
+                                int periodNumber = kvp.Value.PeriodNumber;
 
                                 var classCode = GetCellText(worksheet, currentRow, colNum);
 
@@ -197,8 +197,19 @@ namespace SchoolSchedule.Services
                                     {
                                         var scheduleKey = (classEntity.ClassId, dayId, periodId);
 
-                                        // التحقق من عدم وجود تعارض في قاعدة البيانات أو داخل نفس الملف قبل الحفظ.
-                                        if (usedScheduleKeys.Add(scheduleKey))
+                                        // التحقق من عدم وجود تعارض مكرر داخل نفس الملف.
+                                        if (!importedScheduleKeys.Add(scheduleKey))
+                                        {
+                                            result.Warnings.Add($"تم تجاهل تعارض داخل الملف للصف {finalClassCode} في اليوم {dayId} الحصة {periodNumber}");
+                                        }
+                                        else if (existingSchedulesByKey.TryGetValue(scheduleKey, out var existingSchedule))
+                                        {
+                                            existingSchedule.SubjectId = currentSubject.SubjectId;
+                                            existingSchedule.TeacherId = teacher.TeacherId;
+                                            existingSchedule.UpdatedDate = DateTime.Now;
+                                            result.SchedulesAdded++;
+                                        }
+                                        else
                                         {
                                             var schedule = new Schedule
                                             {
@@ -213,10 +224,6 @@ namespace SchoolSchedule.Services
 
                                             _context.Schedules.Add(schedule);
                                             result.SchedulesAdded++;
-                                        }
-                                        else
-                                        {
-                                            result.Warnings.Add($"تم تجاهل تعارض للصف {finalClassCode} في اليوم {dayId} الحصة {periodId}");
                                         }
                                     }
                                     else
@@ -283,14 +290,14 @@ namespace SchoolSchedule.Services
             return null;
         }
 
-        private static Dictionary<int, (int DayId, int PeriodId)> BuildColumnMap(
+        private static Dictionary<int, (int DayId, int PeriodId, int PeriodNumber)> BuildColumnMap(
             ExcelWorksheet worksheet,
             int headerRow,
             int periodRow,
             List<SchoolDay> days,
             Dictionary<int, Period> periodByNumber)
         {
-            var map = new Dictionary<int, (int DayId, int PeriodId)>();
+            var map = new Dictionary<int, (int DayId, int PeriodId, int PeriodNumber)>();
             var dayStarts = new List<(int Column, SchoolDay Day)>();
             var daysByName = days.ToDictionary(d => NormalizeArabic(d.DayName), d => d);
 
@@ -317,7 +324,7 @@ namespace SchoolSchedule.Services
                         int.TryParse(periodValue.ToString(), out var periodNumber) &&
                         periodByNumber.TryGetValue(periodNumber, out var period))
                     {
-                        map[col] = (dayStarts[i].Day.DayId, period.PeriodId);
+                        map[col] = (dayStarts[i].Day.DayId, period.PeriodId, period.PeriodNumber);
                     }
                 }
             }
