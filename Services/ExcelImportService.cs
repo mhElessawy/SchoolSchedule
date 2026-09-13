@@ -3,6 +3,9 @@ using OfficeOpenXml;
 using SchoolSchedule.Data;
 using SchoolSchedule.Models;
 using SchoolSchedule.Models.ViewModels;
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SchoolSchedule.Services
 {
@@ -16,9 +19,9 @@ namespace SchoolSchedule.Services
         }
 
         public async Task<ImportResult> ImportScheduleFromExcel(
-            Stream excelStream, 
-            string academicYear, 
-            int semester, 
+            Stream excelStream,
+            string academicYear,
+            int semester,
             bool deleteExisting = false)
         {
             var result = new ImportResult { Success = true };
@@ -29,9 +32,16 @@ namespace SchoolSchedule.Services
 
                 using (var package = new ExcelPackage(excelStream))
                 {
-                    // البحث عن ورقة "جدول المدرسي"
+                    if (!package.Workbook.Worksheets.Any())
+                    {
+                        result.Success = false;
+                        result.Errors.Add("ملف Excel لا يحتوي على أي أوراق عمل");
+                        return result;
+                    }
+
+                    // البحث عن ورقة الجدول الرئيسية مع تجاهل اختلافات الهمزات والمسافات.
                     var worksheet = package.Workbook.Worksheets
-                        .FirstOrDefault(ws => ws.Name.Trim().Contains("جدول المدرسي"));
+                        .FirstOrDefault(ws => NormalizeArabic(ws.Name).Contains(NormalizeArabic("جدول المدرسي")));
 
                     if (worksheet == null)
                     {
@@ -41,80 +51,86 @@ namespace SchoolSchedule.Services
                         return result;
                     }
 
+                    var header = DetectScheduleHeader(worksheet);
+                    if (header == null)
+                    {
+                        result.Success = false;
+                        result.Errors.Add("لم يتم العثور على صف عناوين الجدول. يجب أن يحتوي على الأعمدة: المادة، اسم المعلم، وأيام الأسبوع.");
+                        return result;
+                    }
+
                     // حذف البيانات الموجودة إذا طُلب ذلك
                     if (deleteExisting)
                     {
-                        var existingSchedules = await _context.Schedules
+                        var schedulesToDelete = await _context.Schedules
                             .Where(s => s.AcademicYear == academicYear && s.Semester == semester)
                             .ToListAsync();
-                        _context.Schedules.RemoveRange(existingSchedules);
+                        _context.Schedules.RemoveRange(schedulesToDelete);
                         await _context.SaveChangesAsync();
                     }
 
                     // تحميل البيانات المرجعية
-                    var subjects = await _context.Subjects.ToDictionaryAsync(s => s.SubjectName, s => s);
+                    var subjects = await _context.Subjects.ToListAsync();
+                    var subjectLookup = BuildSubjectLookup(subjects);
                     var days = await _context.SchoolDays.OrderBy(d => d.DayOrder).ToListAsync();
                     var periods = await _context.Periods.OrderBy(p => p.PeriodNumber).ToListAsync();
+                    var periodByNumber = periods.ToDictionary(p => p.PeriodNumber, p => p);
                     var classes = await _context.Classes.ToDictionaryAsync(c => c.ClassCode!, c => c);
                     var teachers = new Dictionary<string, Teacher>();
 
-                    // خطوة 1: بناء خريطة الأعمدة (أي عمود يمثل أي يوم وحصة)
-                    var columnMap = new Dictionary<int, (int DayId, int PeriodId)>();
-                    
-                    // قراءة الصف 8 لمعرفة أرقام الحصص
-                    int col = 5; // البداية من العمود 5 (E)
-                    foreach (var day in days)
+                    var existingSchedules = await _context.Schedules
+                        .Where(s => s.AcademicYear == academicYear && s.Semester == semester)
+                        .ToListAsync();
+
+                    var existingSchedulesByKey = existingSchedules
+                        .ToDictionary(s => (s.ClassId, s.DayId, s.PeriodId), s => s);
+                    var importedScheduleKeys = new HashSet<(int ClassId, int DayId, int PeriodId)>();
+
+                    // خطوة 1: بناء خريطة الأعمدة من عناوين الأيام وأرقام الحصص الموجودة فعلاً.
+                    var columnMap = BuildColumnMap(worksheet, header.Value.HeaderRow, header.Value.PeriodRow, days, periodByNumber);
+
+                    if (!columnMap.Any())
                     {
-                        for (int periodNum = 1; periodNum <= 5; periodNum++)
-                        {
-                            // البحث عن العمود الذي يحتوي على رقم الحصة
-                            while (col <= worksheet.Dimension.End.Column)
-                            {
-                                var headerValue = worksheet.Cells[8, col].Value;
-                                if (headerValue != null && int.TryParse(headerValue.ToString(), out int num) && num == periodNum)
-                                {
-                                    var period = periods.FirstOrDefault(p => p.PeriodNumber == periodNum);
-                                    if (period != null)
-                                    {
-                                        columnMap[col] = (day.DayId, period.PeriodId);
-                                    }
-                                    col++;
-                                    break;
-                                }
-                                col++;
-                            }
-                        }
+                        result.Success = false;
+                        result.Errors.Add("لم يتم التعرف على أعمدة الأيام والحصص داخل ورقة الجدول المدرسي");
+                        return result;
                     }
 
                     // خطوة 2: قراءة البيانات من Excel
-                    int currentRow = 9; // البداية من الصف 9 (بعد الترويسة)
+                    int currentRow = header.Value.PeriodRow + 1;
                     Subject? currentSubject = null;
+                    var warnedSubjects = new HashSet<string>();
+                    var lastSavedSchedulesCount = 0;
 
                     while (currentRow <= worksheet.Dimension.End.Row)
                     {
                         // قراءة القيم من الصف
                         var rowNumber = worksheet.Cells[currentRow, 1].Value;
-                        var subjectName = worksheet.Cells[currentRow, 2].Text?.Trim();
-                        var teacherName = worksheet.Cells[currentRow, 3].Text?.Trim();
+                        var subjectName = GetCellText(worksheet, currentRow, 2);
+                        var teacherName = GetCellText(worksheet, currentRow, 3);
 
                         // إذا كانت الخلية الأولى فارغة أو 0، انتقل للصف التالي
-                        if (rowNumber == null || rowNumber.ToString() == "0")
+                        if (rowNumber == null || rowNumber.ToString() == "0" || !int.TryParse(rowNumber.ToString(), out _))
                         {
                             currentRow++;
                             continue;
                         }
 
                         // التحقق من وجود مادة جديدة
-                        if (!string.IsNullOrEmpty(subjectName) && subjects.ContainsKey(subjectName))
+                        if (!string.IsNullOrEmpty(subjectName))
                         {
-                            currentSubject = subjects[subjectName];
+                            currentSubject = ResolveSubject(subjectName, subjectLookup, subjects);
+                            if (currentSubject == null && warnedSubjects.Add(subjectName))
+                            {
+                                result.Warnings.Add($"لم يتم العثور على مادة مطابقة في قاعدة البيانات: {subjectName}");
+                            }
                         }
 
                         // إذا كانت المادة محددة وهناك اسم معلم
                         if (currentSubject != null && !string.IsNullOrEmpty(teacherName))
                         {
                             // البحث عن المعلم أو إنشاؤه
-                            Teacher teacher;
+                            Teacher? teacher;
                             if (teachers.ContainsKey(teacherName))
                             {
                                 teacher = teachers[teacherName];
@@ -127,7 +143,7 @@ namespace SchoolSchedule.Services
                                 if (teacher == null)
                                 {
                                     // استخراج الملاحظات من العمود 40
-                                    var notes = worksheet.Cells[currentRow, 40].Text?.Trim();
+                                    var notes = GetCellText(worksheet, currentRow, 40);
                                     bool isHeadOfDept = notes?.Contains("رئيس قسم") ?? false;
                                     bool isSupervisor = notes?.Contains("مشرف") ?? false;
 
@@ -154,9 +170,9 @@ namespace SchoolSchedule.Services
                                 int colNum = kvp.Key;
                                 int dayId = kvp.Value.DayId;
                                 int periodId = kvp.Value.PeriodId;
+                                int periodNumber = kvp.Value.PeriodNumber;
 
-                                var cellValue = worksheet.Cells[currentRow, colNum].Value;
-                                var classCode = cellValue?.ToString()?.Trim();
+                                var classCode = GetCellText(worksheet, currentRow, colNum);
 
                                 if (!string.IsNullOrEmpty(classCode) &&
                                     classCode != "م.إ" &&  // تجاهل "م.إ"
@@ -179,16 +195,21 @@ namespace SchoolSchedule.Services
 
                                     if (classes.TryGetValue(finalClassCode, out Class? classEntity))
                                     {
-                                        // التحقق من عدم وجود تعارض
-                                        var existingSchedule = await _context.Schedules
-                                            .FirstOrDefaultAsync(s =>
-                                                s.ClassId == classEntity.ClassId &&
-                                                s.DayId == dayId &&
-                                                s.PeriodId == periodId &&
-                                                s.AcademicYear == academicYear &&
-                                                s.Semester == semester);
+                                        var scheduleKey = (classEntity.ClassId, dayId, periodId);
 
-                                        if (existingSchedule == null)
+                                        // التحقق من عدم وجود تعارض مكرر داخل نفس الملف.
+                                        if (!importedScheduleKeys.Add(scheduleKey))
+                                        {
+                                            result.Warnings.Add($"تم تجاهل تعارض داخل الملف للصف {finalClassCode} في اليوم {dayId} الحصة {periodNumber}");
+                                        }
+                                        else if (existingSchedulesByKey.TryGetValue(scheduleKey, out var existingSchedule))
+                                        {
+                                            existingSchedule.SubjectId = currentSubject.SubjectId;
+                                            existingSchedule.TeacherId = teacher.TeacherId;
+                                            existingSchedule.UpdatedDate = DateTime.Now;
+                                            result.SchedulesAdded++;
+                                        }
+                                        else
                                         {
                                             var schedule = new Schedule
                                             {
@@ -205,13 +226,18 @@ namespace SchoolSchedule.Services
                                             result.SchedulesAdded++;
                                         }
                                     }
+                                    else
+                                    {
+                                        result.Warnings.Add($"تم تجاهل كود صف غير موجود في قاعدة البيانات: {finalClassCode}");
+                                    }
                                 }
                             }
 
                             // حفظ كل 50 حصة لتحسين الأداء
-                            if (result.SchedulesAdded % 50 == 0)
+                            if (result.SchedulesAdded > 0 && result.SchedulesAdded - lastSavedSchedulesCount >= 50)
                             {
                                 await _context.SaveChangesAsync();
+                                lastSavedSchedulesCount = result.SchedulesAdded;
                             }
                         }
 
@@ -228,6 +254,172 @@ namespace SchoolSchedule.Services
             }
 
             return result;
+        }
+
+        private static (int HeaderRow, int PeriodRow)? DetectScheduleHeader(ExcelWorksheet worksheet)
+        {
+            for (int row = 1; row <= Math.Min(worksheet.Dimension.End.Row, 30); row++)
+            {
+                var hasSubject = false;
+                var hasTeacher = false;
+                var hasDay = false;
+
+                for (int col = 1; col <= worksheet.Dimension.End.Column; col++)
+                {
+                    var text = NormalizeArabic(GetCellText(worksheet, row, col));
+                    if (text == NormalizeArabic("المادة"))
+                    {
+                        hasSubject = true;
+                    }
+                    else if (text == NormalizeArabic("اسم المعلم"))
+                    {
+                        hasTeacher = true;
+                    }
+                    else if (IsKnownDayHeader(text))
+                    {
+                        hasDay = true;
+                    }
+                }
+
+                if (hasSubject && hasTeacher && hasDay)
+                {
+                    return (row, row + 1);
+                }
+            }
+
+            return null;
+        }
+
+        private static Dictionary<int, (int DayId, int PeriodId, int PeriodNumber)> BuildColumnMap(
+            ExcelWorksheet worksheet,
+            int headerRow,
+            int periodRow,
+            List<SchoolDay> days,
+            Dictionary<int, Period> periodByNumber)
+        {
+            var map = new Dictionary<int, (int DayId, int PeriodId, int PeriodNumber)>();
+            var dayStarts = new List<(int Column, SchoolDay Day)>();
+            var daysByName = days.ToDictionary(d => NormalizeArabic(d.DayName), d => d);
+
+            for (int col = 1; col <= worksheet.Dimension.End.Column; col++)
+            {
+                var headerText = NormalizeArabic(GetCellText(worksheet, headerRow, col));
+                if (daysByName.TryGetValue(headerText, out var day))
+                {
+                    dayStarts.Add((col, day));
+                }
+            }
+
+            for (int i = 0; i < dayStarts.Count; i++)
+            {
+                var start = dayStarts[i].Column;
+                var end = i + 1 < dayStarts.Count
+                    ? dayStarts[i + 1].Column - 1
+                    : worksheet.Dimension.End.Column;
+
+                for (int col = start; col <= end; col++)
+                {
+                    var periodValue = worksheet.Cells[periodRow, col].Value;
+                    if (periodValue != null &&
+                        int.TryParse(periodValue.ToString(), out var periodNumber) &&
+                        periodByNumber.TryGetValue(periodNumber, out var period))
+                    {
+                        map[col] = (dayStarts[i].Day.DayId, period.PeriodId, period.PeriodNumber);
+                    }
+                }
+            }
+
+            return map;
+        }
+
+        private static Dictionary<string, Subject> BuildSubjectLookup(List<Subject> subjects)
+        {
+            var lookup = new Dictionary<string, Subject>();
+            foreach (var subject in subjects)
+            {
+                lookup[NormalizeSubject(subject.SubjectName)] = subject;
+                if (!string.IsNullOrWhiteSpace(subject.SubjectNameEn))
+                {
+                    lookup[NormalizeSubject(subject.SubjectNameEn)] = subject;
+                }
+            }
+
+            return lookup;
+        }
+
+        private static Subject? ResolveSubject(string subjectName, Dictionary<string, Subject> lookup, List<Subject> subjects)
+        {
+            var normalized = NormalizeSubject(subjectName);
+            if (lookup.TryGetValue(normalized, out var subject))
+            {
+                return subject;
+            }
+
+            if (normalized.Contains("موسيقي"))
+            {
+                return subjects.FirstOrDefault(s => NormalizeSubject(s.SubjectName).Contains("موسيقي"));
+            }
+
+            if (normalized.Contains("دراسات"))
+            {
+                return subjects.FirstOrDefault(s => NormalizeSubject(s.SubjectName).Contains("دراسات"));
+            }
+
+            return subjects.FirstOrDefault(s =>
+                NormalizeSubject(s.SubjectName).Contains(normalized) ||
+                normalized.Contains(NormalizeSubject(s.SubjectName)));
+        }
+
+        private static bool IsKnownDayHeader(string text)
+        {
+            return text is "الاحد" or "الاثنين" or "الثلاثاء" or "الاربعاء" or "الخميس";
+        }
+
+        private static string? GetCellText(ExcelWorksheet worksheet, int row, int col)
+        {
+            var cell = worksheet.Cells[row, col];
+            return (cell.Text ?? cell.Value?.ToString())?.Trim();
+        }
+
+        private static string NormalizeSubject(string value)
+        {
+            var normalized = NormalizeArabic(value);
+            normalized = Regex.Replace(normalized, @"\(.+?\)", "");
+            normalized = normalized.Replace("التربيه", "");
+            normalized = normalized.Replace("اللغه", "");
+            normalized = normalized.Replace(" ", "");
+            return normalized;
+        }
+
+        private static string NormalizeArabic(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var normalized = value.Trim().Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalized.Length);
+
+            foreach (var ch in normalized)
+            {
+                var category = CharUnicodeInfo.GetUnicodeCategory(ch);
+                if (category == UnicodeCategory.NonSpacingMark)
+                {
+                    continue;
+                }
+
+                builder.Append(ch switch
+                {
+                    'أ' or 'إ' or 'آ' => 'ا',
+                    'ى' => 'ي',
+                    'ة' => 'ه',
+                    'ـ' => '\0',
+                    _ => ch
+                });
+            }
+
+            return builder.ToString().Replace("\0", "").Normalize(NormalizationForm.FormC);
         }
 
         public async Task<byte[]> ExportScheduleToExcel(string academicYear, int semester)
