@@ -25,7 +25,8 @@ namespace SchoolSchedule.Controllers
             var model = new ImportScheduleViewModel
             {
                 AcademicYear = settings.CurrentAcademicYear!,
-                Semester = settings.CurrentSemester!.Value
+                Semester = settings.CurrentSemester!.Value,
+                DeleteExisting = true
             };
 
             return View(model);

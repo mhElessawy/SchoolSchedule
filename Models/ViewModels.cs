@@ -229,7 +229,7 @@ namespace SchoolSchedule.Models.ViewModels
         public int Semester { get; set; }
 
         [Display(Name = "حذف البيانات الموجودة")]
-        public bool DeleteExisting { get; set; } = false;
+        public bool DeleteExisting { get; set; } = true;
     }
 
     // نتيجة الاستيراد
