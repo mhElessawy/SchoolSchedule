@@ -109,8 +109,11 @@ namespace SchoolSchedule.Services
                         var subjectName = GetCellText(worksheet, currentRow, 2);
                         var teacherName = GetCellText(worksheet, currentRow, 3);
 
-                        // إذا كانت الخلية الأولى فارغة أو 0، انتقل للصف التالي
-                        if (rowNumber == null || rowNumber.ToString() == "0" || !int.TryParse(rowNumber.ToString(), out _))
+                        // إذا كانت الخلية الأولى فارغة أو 0 ولم يوجد اسم مادة أو معلم في نفس الصف، انتقل للصف التالي.
+                        // بعض الملفات تترك خلية الرقم فارغة في أول صف من مادة جديدة (مثال: بداية "اللغة العربية")
+                        // دون أن يكون الصف فارغًا فعليًا، فتجاهله بالكامل كان يسقط اسم المادة والمعلم في هذا الصف.
+                        bool hasValidRowNumber = rowNumber != null && rowNumber.ToString() != "0" && int.TryParse(rowNumber.ToString(), out _);
+                        if (!hasValidRowNumber && string.IsNullOrEmpty(subjectName) && string.IsNullOrEmpty(teacherName))
                         {
                             currentRow++;
                             continue;
