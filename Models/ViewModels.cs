@@ -13,12 +13,12 @@ namespace SchoolSchedule.Models.ViewModels
         public int Semester { get; set; }
 
         // الجدول منظم حسب اليوم والحصة
-        public Dictionary<int, Dictionary<int, ScheduleCell>> ScheduleGrid { get; set; } 
+        public Dictionary<int, Dictionary<int, ScheduleCell>> ScheduleGrid { get; set; }
             = new Dictionary<int, Dictionary<int, ScheduleCell>>();
 
         public List<SchoolDay> Days { get; set; } = new List<SchoolDay>();
         public List<Period> Periods { get; set; } = new List<Period>();
-        
+
         // للطباعة - تحويل Grid إلى قوائم
         public List<List<ScheduleCell?>> ScheduleGridList
         {
@@ -30,7 +30,7 @@ namespace SchoolSchedule.Models.ViewModels
                     var daySchedules = new List<ScheduleCell?>();
                     foreach (var period in Periods.OrderBy(p => p.PeriodNumber))
                     {
-                        if (ScheduleGrid.ContainsKey(day.DayId) && 
+                        if (ScheduleGrid.ContainsKey(day.DayId) &&
                             ScheduleGrid[day.DayId].ContainsKey(period.PeriodId))
                         {
                             daySchedules.Add(ScheduleGrid[day.DayId][period.PeriodId]);
@@ -64,12 +64,12 @@ namespace SchoolSchedule.Models.ViewModels
         public bool IsSupervisor { get; set; }
 
         // الجدول منظم حسب اليوم والحصة
-        public Dictionary<int, Dictionary<int, ScheduleCell>> ScheduleGrid { get; set; } 
+        public Dictionary<int, Dictionary<int, ScheduleCell>> ScheduleGrid { get; set; }
             = new Dictionary<int, Dictionary<int, ScheduleCell>>();
 
         public List<SchoolDay> Days { get; set; } = new List<SchoolDay>();
         public List<Period> Periods { get; set; } = new List<Period>();
-        
+
         // للطباعة - تحويل Grid إلى قوائم
         public List<List<ScheduleCell?>> ScheduleGridList
         {
@@ -81,7 +81,7 @@ namespace SchoolSchedule.Models.ViewModels
                     var daySchedules = new List<ScheduleCell?>();
                     foreach (var period in Periods.OrderBy(p => p.PeriodNumber))
                     {
-                        if (ScheduleGrid.ContainsKey(day.DayId) && 
+                        if (ScheduleGrid.ContainsKey(day.DayId) &&
                             ScheduleGrid[day.DayId].ContainsKey(period.PeriodId))
                         {
                             daySchedules.Add(ScheduleGrid[day.DayId][period.PeriodId]);
@@ -229,7 +229,7 @@ namespace SchoolSchedule.Models.ViewModels
         public int Semester { get; set; }
 
         [Display(Name = "حذف البيانات الموجودة")]
-        public bool DeleteExisting { get; set; } = false;
+        public bool DeleteExisting { get; set; } = true;
     }
 
     // نتيجة الاستيراد
@@ -301,7 +301,7 @@ namespace SchoolSchedule.Models.ViewModels
         public List<Period> Periods { get; set; } = new List<Period>();
 
         // الجدول: ClassId -> PeriodId -> ScheduleCell
-        public Dictionary<int, Dictionary<int, ScheduleCell>> ScheduleGrid { get; set; } 
+        public Dictionary<int, Dictionary<int, ScheduleCell>> ScheduleGrid { get; set; }
             = new Dictionary<int, Dictionary<int, ScheduleCell>>();
     }
 }
